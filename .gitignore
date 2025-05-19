@@ -4,6 +4,7 @@
 /src/migrations/target
 # If you use Cargo workspaces:
 /Cargo.lock
+/frontend/node_modules/
 
 # IDE/editor files
 *.rs.bk
