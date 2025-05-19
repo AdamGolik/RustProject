@@ -1,6 +1,22 @@
 version: "3.8"
 
 services:
+  server:
+    build:
+      context: .
+      target: final
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rust_network
+    environment:
+      POSTGRES_HOST: db
+      JWT_SECRET: your_jwt_secret_here
+      DATABASE_URL: postgres://user:password@localhost:5432/rust_db
+
   db:
     image: postgres:13
     container_name: postgresql_rust
@@ -14,6 +30,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - rust_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
