@@ -118,6 +118,8 @@ pub struct GetClientsQuery {
     page: Option<u64>,
     per_page: Option<u64>,
     search: Option<String>,
+    from: Option<chrono::NaiveDateTime>,
+    to: Option<chrono::NaiveDateTime>,
 }
 
 #[get("/")]
@@ -138,7 +140,7 @@ pub async fn get_clients(
         .filter(client::Column::UserUuid.eq(user_uuid))
         .order_by_desc(client::Column::Datetime);
 
-    // Add search filter if provided
+    // Search filter
     if let Some(search) = &query.search {
         let search_condition = Condition::any()
             .add(client::Column::Name.contains(search))
@@ -146,6 +148,11 @@ pub async fn get_clients(
             .add(client::Column::Title.contains(search))
             .add(client::Column::Telephone.contains(search));
         select = select.filter(search_condition);
+    }
+
+    // Date range filter
+    if let (Some(from), Some(to)) = (query.from, query.to) {
+        select = select.filter(client::Column::Datetime.between(from, to));
     }
 
     match select

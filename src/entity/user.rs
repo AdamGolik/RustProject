@@ -18,6 +18,11 @@ pub struct Controller {
     pub email: String,
     pub password: String,
 }
+#[derive(Deserialize)]
+pub struct Login {
+    pub email: String,
+    pub password: String,
+}
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq, Serialize, Deserialize)]
 pub struct Model {
@@ -82,3 +87,6 @@ impl Related<super::client::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+
+

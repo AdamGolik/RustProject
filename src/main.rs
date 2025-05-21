@@ -1,5 +1,6 @@
 use std::env;
 
+use actix_cors::Cors;
 use actix_web::{get, middleware::Logger, web, App, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
 use env_logger::Env;
@@ -38,6 +39,13 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(db.clone())) // Share database connection with the app
+            .wrap(
+                Cors::default()
+                    .allowed_origin("http://localhost:3000") // Allow requests from this origin
+                    .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"]) // Specify allowed methods
+                    .allowed_headers(vec!["Content-Type", "Authorization"]) // Specify allowed headers
+                    .max_age(3600),
+            ) // Cache preflight response for 1 hour
             .wrap(Logger::new("%a %r %s %b %D %U %{User-Agent}i"))
             .service(hello)
             .service(controller::user::register)
@@ -60,7 +68,7 @@ async fn main() -> std::io::Result<()> {
                     .service(controller::client::get_clients_by_date_range),
             )
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }

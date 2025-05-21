@@ -48,7 +48,7 @@ pub async fn register(db: web::Data<DbConn>, req: web::Json<user::Controller>) -
 }
 
 #[post("/login")]
-pub async fn login(db: web::Data<DbConn>, req: web::Json<user::Controller>) -> impl Responder {
+pub async fn login(db: web::Data<DbConn>, req: web::Json<user::Login>) -> impl Responder {
     let user_result = Entity::find()
         .filter(user::Column::Email.eq(&req.email))
         .one(&**db)
@@ -219,3 +219,5 @@ pub async fn delete(db: web::Data<DbConn>, req: HttpRequest) -> impl Responder {
         Err(_) => HttpResponse::InternalServerError().body("Database error"),
     }
 }
+
+
