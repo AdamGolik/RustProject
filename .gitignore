@@ -5,7 +5,7 @@
 # If you use Cargo workspaces:
 /Cargo.lock
 /frontend/node_modules/
-
+/sarafrontend/
 # IDE/editor files
 *.rs.bk
 *.swp
