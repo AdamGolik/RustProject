@@ -44,6 +44,47 @@ async fn extract_user_uuid(req: &HttpRequest) -> Result<Uuid, HttpResponse> {
     }
 }
 
+// Helper function to check for time conflicts
+async fn check_time_conflict(
+    db: &DbConn,
+    user_uuid: Uuid,
+    time_from: chrono::NaiveDateTime,
+    time_to: chrono::NaiveDateTime,
+    exclude_client_uuid: Option<Uuid>,
+) -> Result<bool, sea_orm::DbErr> {
+    let mut query = client::Entity::find()
+        .filter(client::Column::UserUuid.eq(user_uuid))
+        .filter(
+            Condition::any()
+                // New appointment starts during an existing one
+                .add(
+                    Condition::all()
+                        .add(client::Column::TimeFrom.lte(time_from))
+                        .add(client::Column::TimeTo.gt(time_from)),
+                )
+                // New appointment ends during an existing one
+                .add(
+                    Condition::all()
+                        .add(client::Column::TimeFrom.lt(time_to))
+                        .add(client::Column::TimeTo.gte(time_to)),
+                )
+                // New appointment completely contains an existing one
+                .add(
+                    Condition::all()
+                        .add(client::Column::TimeFrom.gte(time_from))
+                        .add(client::Column::TimeTo.lte(time_to)),
+                ),
+        );
+
+    // Exclude the current client when updating
+    if let Some(uuid) = exclude_client_uuid {
+        query = query.filter(client::Column::Uuid.ne(uuid));
+    }
+
+    let conflicting_clients = query.all(db).await?;
+    Ok(!conflicting_clients.is_empty())
+}
+
 // CREATE - Add new client
 #[post("/add")]
 pub async fn add_client(
@@ -55,6 +96,20 @@ pub async fn add_client(
         Ok(uuid) => uuid,
         Err(response) => return response,
     };
+
+    // Check for time conflicts
+    match check_time_conflict(&**db, user_uuid, clt.time_from, clt.time_to, None).await {
+        Ok(true) => {
+            return HttpResponse::Conflict().json(serde_json::json!({
+                "error": "Time slot conflicts with existing appointment"
+            }))
+        }
+        Ok(false) => {}
+        Err(e) => {
+            eprintln!("Database error: {:?}", e);
+            return HttpResponse::InternalServerError().body("Failed to check time conflicts");
+        }
+    }
 
     // Create new client
     let new_client = ClientModel {
@@ -224,6 +279,22 @@ pub async fn update_client(
             return HttpResponse::InternalServerError().body("Failed to fetch client");
         }
     };
+
+    // If time is being updated, check for conflicts
+    if let (Some(time_from), Some(time_to)) = (update_data.time_from, update_data.time_to) {
+        match check_time_conflict(&**db, user_uuid, time_from, time_to, Some(client_uuid)).await {
+            Ok(true) => {
+                return HttpResponse::Conflict().json(serde_json::json!({
+                    "error": "Time slot conflicts with existing appointment"
+                }))
+            }
+            Ok(false) => {}
+            Err(e) => {
+                eprintln!("Database error: {:?}", e);
+                return HttpResponse::InternalServerError().body("Failed to check time conflicts");
+            }
+        }
+    }
 
     // Convert to ActiveModel for updating
     let mut client_active: client::ActiveModel = existing_client.into();

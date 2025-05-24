@@ -41,7 +41,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(db.clone())) // Share database connection with the app
             .wrap(
                 Cors::default()
-                    .allowed_origin("https://sarafrontend.onrender.com") // Allow requests from this origin
+                    .allowed_origin("http://localhost:3000") // Allow requests from this origin
                     .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"]) // Specify allowed methods
                     .allowed_headers(vec!["Content-Type", "Authorization"]) // Specify allowed headers
                     .max_age(3600),
